@@ -21,7 +21,7 @@ mex SOGRAND.c
 
 **2. Setup Python environment:**
 
-Note: The Python environment is required for the Python and MATLAB simulations as MATLAb calls the ldpc package
+Note: The Python environment is required for the Python and MATLAB simulations as MATLAB calls the ldpc package
 for OSD post-processing.
 ```bash
 python -m venv .venv
@@ -39,7 +39,7 @@ Move the repository’s `data` folder into this project’s data directory and r
 
 This setup can also be done automatically by running:
 ```matlab
-setup_data.m
+setup_data
 ```
 
 ## Run Code
