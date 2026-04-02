@@ -1,10 +1,10 @@
 # Efficient Soft-Output Guessing for Enhanced Quantum Tanner Code Decoding
 
+Subject to license: "**GRAND Codebase Non-Commercial Academic Research Use License 021722.pdf**"
+
 This repository contains the official implementation for the paper 
 [Efficient Soft-Output Guessing for Enhanced Quantum Tanner Code Decoding](https://arxiv.org/abs/2603.18318) [1]. 
 It includes both MATLAB and Python environments to simulate SOGRAND and standard BP+OSD decoding of Quantum Tanner Codes.
-
-Subject to license: "**GRAND Codebase Non-Commercial Academic Research Use License 021722.pdf**"
 
 ## Prerequisites
 
@@ -13,19 +13,13 @@ Subject to license: "**GRAND Codebase Non-Commercial Academic Research Use Licen
 - Tested on: Linux, Windows 11
 
 ## Setup
-**1. Clone the repository:**
-  ```bash
-  git clone https://github.com/grand-decoder/quantum-tanner-sogrand.git
-  cd quantum_tanner_sogrand
-  ```
-
-**2. Compile the MEX files in MATLAB:**
+**1. Compile the MEX files in MATLAB:**
 ```matlab
 cd src/decoder
 mex SOGRAND.c
 ```
 
-**3. Setup Python environment:**
+**2. Setup Python environment:**
 
 Note: The Python environment is required for the Python and MATLAB simulations as MATLAb calls the ldpc package
 for OSD post-processing.
@@ -36,7 +30,7 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-**4. Download Quantum Tanner Code Data:**
+**3. Download Quantum Tanner Code Data:**
 
 To test the decoder on the quantum Tanner codes described in [3], obtain the corresponding data from the 
 [qTanner GitHub repository](https://github.com/RebKatRad/qTanner). 
