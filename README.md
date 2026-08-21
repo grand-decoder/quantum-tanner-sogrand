@@ -52,8 +52,8 @@ simulate_quantum_tanner_code
 
 `setup_env` adds required MATLAB paths and configures the Python environment for OSD postprocessing.
 
-### Simulate Standard BP+OSD Decoding
-To simulate the baseline BP+OSD decoding, run the following in your terminal:
+### Simulate Standard BP and BP+OSD Decoding
+To simulate the baseline BP and BP+OSD decoding, run the following in your terminal:
 ```bash
 # Ensure your python virtual environment is activated
 cd experiments
@@ -65,15 +65,19 @@ To simulate performance over maximal iteration numbers, run:
 cd experiments
 python bp_simulation_parallelize_iter.py
 ```
+Note: In contrast to the results in [1], the simulation does not apply message normalization if the sum product decoder is used.
+Message normalization for the sum product decoder requires modifications of the `ldpc` package which we do not provide in this repository.
 
 ### Reproduce Plots from the Paper
 To reproduce the figures from [1], run the following in MATLAB:
 
 ```matlab
 % (run in MATLAB):
-plot_bler_code_200_10_10  % Figure 2a in [1]
-plot_bler_code_250_10_15  % Figure 2b in [1]
-plot_threshold            % Figure 2c in [1]
+bler_performance_curves % Figure 3 in [1]
+convergence_behavior % Figure 4 in [1]
+relay_bler_performance % Figure 6 in [1]
+relay_different_sets % Figure 7 in [1]
+hyperparameter_optimization_relay % Figure 8 in [1]
 ```
 
 ## Citations
@@ -122,11 +126,15 @@ Since the current PyPI release does not yet provide a standalone OSD decoder, we
 
   > [5] J. Roffe, D. R. White, S. Burton, and E. Campbell, Decoding across the quantum low-density parity-check code landscape, Phys. Rev. Res. 2, 043423 (2020).
 
+- **RelayBP Package:** The `relay-bp` Python package is used to evaluate the BP+Relay baseline. [relay-bp Github repository](https://github.com/trmue/relay)
+  > [6]  T. Müller, T. Alexander, M. E. Beverland, M. Bühler, B. R. Johnson, T. Maurer, and D. Vandeth, Improved belief propagation is sufficient for real-time decoding of quantum memory (2025), arXiv:2506.01779 [quant-ph]
+
+
 ## Note
 Although the SOGRAND/OBRGRAND implementation provided here is not parallelized, the algorithm is highly parallelizable. E.g.
-> [6] A. Riaz, Y. Alperen, F. Ercan, W. An, J. Ngo, K. Galligan, M. Medard, K. R. Duffy, R. Yazicigil. "A sub-0.8-pJ/bit universal soft detection decoder using ORBGRAND,” IEEE J. Solid-State Circuits, 2025.
+> [7] A. Riaz, Y. Alperen, F. Ercan, W. An, J. Ngo, K. Galligan, M. Medard, K. R. Duffy, R. Yazicigil. "A sub-0.8-pJ/bit universal soft detection decoder using ORBGRAND,” IEEE J. Solid-State Circuits, 2025.
 
-> [7] E. Kizilates, A. Riaz, A. Bali, J. Feng, M. Médard, K. R. Duffy & R. T. Yazicigil. Soft output threshold-guided CRC decoding with SOGRAND in 40nm CMOS. IEEE CICC, 2026.
+> [8] E. Kizilates, A. Riaz, A. Bali, J. Feng, M. Médard, K. R. Duffy & R. T. Yazicigil. Soft output threshold-guided CRC decoding with SOGRAND in 40nm CMOS. IEEE CICC, 2026.
 
 Moreover, GLDPC decoding is highly parallelizable, where all component codes can be decoded in parallel, 
 but this is not exploited here. For further details on GRAND, see: [https://www.granddecoder.mit.edu/](https://www.granddecoder.mit.edu/).

@@ -32,6 +32,9 @@ function quantum_tanner_code=quantum_tanner_code_construction(lrcc_path, code_pa
 
     tmp = g2h(H_global);
     H_dual_symplectic = [tmp(:, (num_qubits + 1):end), tmp(:, 1:num_qubits)];
+
+    H_dual_symplectic_x = g2h(H_global_x);
+    H_dual_symplectic_z = g2h(H_global_z);
     
     H_comp_z = kron(ga, gb);
     H_comp_x = kron(pa, pb);
@@ -46,6 +49,8 @@ function quantum_tanner_code=quantum_tanner_code_construction(lrcc_path, code_pa
     quantum_tanner_code.H_global_x = H_global_x;
     quantum_tanner_code.H_global_z = H_global_z;
     quantum_tanner_code.H_dual_symplectic = H_dual_symplectic;
+    quantum_tanner_code.H_dual_symplectic_x = H_dual_symplectic_x;
+    quantum_tanner_code.H_dual_symplectic_z = H_dual_symplectic_z;
     quantum_tanner_code.H_comp_z = H_comp_z;
     quantum_tanner_code.H_comp_x = H_comp_x;
 end

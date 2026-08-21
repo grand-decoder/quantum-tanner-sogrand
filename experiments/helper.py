@@ -149,7 +149,7 @@ def swap_z_x(v):
     return np.concatenate((v[mid:], v[:mid]))
 
 
-def create_decoders(Hx, Hz, p, use_osd, max_iter, osd_order):
+def create_decoders(Hx, Hz, p, use_osd, max_iter, osd_order, bp_method):
     """
     Creates BP (or BP+OSD) decoders for Z and X errors.
     Returns (decoder_z, decoder_x) where decoder_z decodes Z errors from X stabilizers
@@ -159,7 +159,7 @@ def create_decoders(Hx, Hz, p, use_osd, max_iter, osd_order):
         decoder_z = BpOsdDecoder(
             Hx,
             error_rate=2 * p / 3,
-            bp_method='minimum_sum',
+            bp_method=bp_method,
             max_iter=max_iter,
             ms_scaling_factor=0.625,
             osd_method="OSD_CS",
@@ -168,7 +168,7 @@ def create_decoders(Hx, Hz, p, use_osd, max_iter, osd_order):
         decoder_x = BpOsdDecoder(
             Hz,
             error_rate=2 * p / 3,
-            bp_method='minimum_sum',
+            bp_method=bp_method,
             max_iter=max_iter,
             ms_scaling_factor=0.625,
             osd_method="OSD_CS",
@@ -178,14 +178,14 @@ def create_decoders(Hx, Hz, p, use_osd, max_iter, osd_order):
         decoder_z = BpDecoder(
             Hx,
             error_rate=2 * p / 3,
-            bp_method='minimum_sum',
+            bp_method=bp_method,
             max_iter=max_iter,
             ms_scaling_factor=0.625,
         )
         decoder_x = BpDecoder(
             Hz,
             error_rate=2 * p / 3,
-            bp_method='minimum_sum',
+            bp_method=bp_method,
             max_iter=max_iter,
             ms_scaling_factor=0.625,
         )
@@ -224,13 +224,13 @@ def run_decoding_trial(rng, decoder_x, decoder_z, p, num_qubits, H_global, n_x_c
     Returns (had_error, had_degenerate_error).
     """
     correct_error_gf4 = rng.choice([1, 2, 3, 4], p=[1 - p, p / 3, p / 3, p / 3], size=num_qubits)
-    correct_error_x = ((correct_error_gf4 == 2) | (correct_error_gf4 == 4)).astype(int)
-    correct_error_z = ((correct_error_gf4 == 3) | (correct_error_gf4 == 4)).astype(int)
+    correct_error_x = ((correct_error_gf4 == 2) | (correct_error_gf4 == 4)).astype(np.uint8)
+    correct_error_z = ((correct_error_gf4 == 3) | (correct_error_gf4 == 4)).astype(np.uint8)
     correct_error = np.concatenate((correct_error_x, correct_error_z))
 
     syndrome = np.mod(H_global @ swap_z_x(correct_error), 2)
-    syndrome_z = syndrome[:n_x_checks]
-    syndrome_x = syndrome[n_x_checks:]
+    syndrome_z = syndrome[:n_x_checks].astype(np.uint8)
+    syndrome_x = syndrome[n_x_checks:].astype(np.uint8)
 
     error_hat_x = decoder_x.decode(syndrome_x)
     error_hat_z = decoder_z.decode(syndrome_z)

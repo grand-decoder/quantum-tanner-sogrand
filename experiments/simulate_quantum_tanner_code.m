@@ -69,7 +69,8 @@ decoder_property.list_size = 4;
 decoder_property.sogrand_thr = 10^-5;
 
 % Maximal number of decoding iterations
-decoder_property.max_iter = 20;
+% If decoder_property.use_relay_bp = true, decoder_property.max_iter will be ignored.
+decoder_property.max_iter = 200;
 
 % Scaling factor with which extrinsic messages are scaled during message
 % passing.
@@ -88,13 +89,34 @@ decoder_property.IC = -1;
 
 % If true, correlation between X and Z error from the depolarizing channel
 % are considered.
-decoder_property.use_x_z_correlation = true;
+decoder_property.use_x_z_correlation = false;
 
 % If true, OSD with combination strategy using the LDPCv2 package is used 
 % as a post-processing step.
-decoder_property.use_osd_decoder = true;
+decoder_property.use_osd_decoder = false;
 % OSD order for post-processing.
 decoder_property.osd_order = 9;
+
+% If true, SOGRAND with relay principle is used.
+% - If decoder_property.use_relay_bp = true, decoder_property.max_iter will be ignored.
+% - decoder_property.use_x_z_correlation = true or decoder_property.use_osd_decoder = true
+%   for decoder_property.use_relay_bp = true is currently not implemented.
+decoder_property.use_relay_bp = false;
+% Set SOGRAND+Relay Parameters (see [6] and [1] for details)
+% Memory strength of first set
+decoder_property.rel_bp_gamma0 = 0.0700;
+% Number of iterations of first set
+decoder_property.rel_bp_pre_iter = 80;
+% Number of sets in total (including the first leg)
+decoder_property.rel_bp_num_sets = 60;
+% Number of iterations for each leg except for the first one.
+decoder_property.rel_bp_set_max_iter = 60;
+% Sampling interval for the memory strength for each leg except for the
+% first one.
+decoder_property.rel_bp_gamma_dist_interval_start = -0.4100;
+decoder_property.rel_bp_gamma_dist_interval_end = 0.1100;
+% If true, the first set with constant memory strength will be skipped.
+decoder_property.rel_bp_skip_first_leg = false;
 
 % file prefix to name simulation run.
 file_name_part = "test";
@@ -105,7 +127,7 @@ file_name_part = "test";
 
 p_list = logspace(p_start, p_end, p_count);
 
-file_name = code_name + "_osd" + string(double(decoder_property.use_osd_decoder)) + "_corr" + string(double(decoder_property.use_x_z_correlation)) + "_" + file_name_part;
+file_name = code_name + "_osd" + string(double(decoder_property.use_osd_decoder)) + "_corr" + string(double(decoder_property.use_x_z_correlation)) + "_rel" + string(double(decoder_property.use_relay_bp)) + "_" + file_name_part;
 
 % Get the root folder relative to this script's location
 script_dir = fileparts(mfilename('fullpath'));
@@ -136,13 +158,19 @@ if isempty(slurm_id)
 end
 log_message(result_folder_path, "Slurm Job ID: " + slurm_id);
 
+if ~decoder_property.use_relay_bp
+    max_iter_for_result_list = decoder_property.max_iter;
+else
+    max_iter_for_result_list = decoder_property.rel_bp_pre_iter + (decoder_property.rel_bp_num_sets - 1) * decoder_property.rel_bp_set_max_iter;
+end
+
 num_decoded_sum_list = zeros(length(p_list),1);
 num_error_sum_list = zeros(length(p_list),1);
 num_degenereated_error_sum_list = zeros(length(p_list),1);
-num_error_per_iteration_sum_list = zeros(length(p_list), decoder_property.max_iter);
-num_error_deg_per_iteration_sum_list = zeros(length(p_list), decoder_property.max_iter);
+num_error_per_iteration_sum_list = zeros(length(p_list), max_iter_for_result_list);
+num_error_deg_per_iteration_sum_list = zeros(length(p_list), max_iter_for_result_list);
 num_guesses_total_sum_list = zeros(length(p_list), 1);
-num_guesses_per_iteration_sum_list  = zeros(length(p_list), decoder_property.max_iter);
+num_guesses_per_iteration_sum_list  = zeros(length(p_list), max_iter_for_result_list);
 
 if use_parallel
     poolObj = gcp('nocreate');
@@ -178,10 +206,11 @@ for ii=1:length(p_list)
     num_decoded_sum = 0;
     num_error_sum = 0;
     num_degenereated_error_sum = 0;
-    num_error_per_iteration_sum = zeros(decoder_property.max_iter, 1);
-    num_error_deg_per_iteration_sum = zeros(decoder_property.max_iter, 1);
+
+    num_error_per_iteration_sum = zeros(max_iter_for_result_list, 1);
+    num_error_deg_per_iteration_sum = zeros(max_iter_for_result_list, 1);
     num_guesses_total_sum = 0;
-    num_guesses_per_iteration_sum = zeros(decoder_property.max_iter, 1);
+    num_guesses_per_iteration_sum = zeros(max_iter_for_result_list, 1);
     
     while num_degenereated_error_sum < max_num_deg_errors && num_decoded_sum < max_num_simulations
         if use_parallel
@@ -200,15 +229,18 @@ for ii=1:length(p_list)
                 [batch_decoded, batch_error, batch_deg_error, batch_error_iter, ...
                  batch_deg_iter, batch_guesses_total, batch_guesses_iter] = run_decoding_batch( ...
                  simulation_batch_time, p_physical, parallel_quantum_tanner_code.Value, decoder_property, max_num_deg_errors, ...
-                 max_num_simulations, osd_decoder_x, osd_decoder_z, calc_performance_per_iter);
+                 max_num_simulations, osd_decoder_x, osd_decoder_z, calc_performance_per_iter, max_iter_for_result_list);
         
                 num_decoded_sum                 = num_decoded_sum + batch_decoded;
                 num_error_sum                   = num_error_sum + batch_error;
                 num_degenereated_error_sum      = num_degenereated_error_sum + batch_deg_error;
-                num_error_per_iteration_sum     = num_error_per_iteration_sum + batch_error_iter;
-                num_error_deg_per_iteration_sum = num_error_deg_per_iteration_sum + batch_deg_iter;
                 num_guesses_total_sum           = num_guesses_total_sum + batch_guesses_total;
-                num_guesses_per_iteration_sum   = num_guesses_per_iteration_sum + batch_guesses_iter;
+
+                if calc_performance_per_iter
+                    num_error_per_iteration_sum     = num_error_per_iteration_sum + batch_error_iter;
+                    num_error_deg_per_iteration_sum = num_error_deg_per_iteration_sum + batch_deg_iter;
+                    num_guesses_per_iteration_sum   = num_guesses_per_iteration_sum + batch_guesses_iter;
+                end
             end
         else
             [batch_decoded, batch_error, batch_deg_error, batch_error_iter, ...
@@ -219,10 +251,13 @@ for ii=1:length(p_list)
             num_decoded_sum                 = num_decoded_sum + batch_decoded;
             num_error_sum                   = num_error_sum + batch_error;
             num_degenereated_error_sum      = num_degenereated_error_sum + batch_deg_error;
-            num_error_per_iteration_sum     = num_error_per_iteration_sum + batch_error_iter;
-            num_error_deg_per_iteration_sum = num_error_deg_per_iteration_sum + batch_deg_iter;
             num_guesses_total_sum           = num_guesses_total_sum + batch_guesses_total;
-            num_guesses_per_iteration_sum   = num_guesses_per_iteration_sum + batch_guesses_iter;
+
+            if calc_performance_per_iter
+                num_error_per_iteration_sum     = num_error_per_iteration_sum + batch_error_iter;
+                num_error_deg_per_iteration_sum = num_error_deg_per_iteration_sum + batch_deg_iter;
+                num_guesses_per_iteration_sum   = num_guesses_per_iteration_sum + batch_guesses_iter;
+            end
         end
     end
 
@@ -300,7 +335,7 @@ log_message(result_folder_path, "Finished");
 
 function [num_decoded, num_error_sum, num_degenereated_error_sum, num_error_per_iteration_sum, ...
     num_error_deg_per_iteration_sum, num_guesses_total_sum, num_guesses_per_iteration_sum]=run_decoding_batch( ...
-    simulation_batch_time, p_physical, quantum_tanner_code, decoder_property, max_num_deg_errors, max_num_simulations, osd_decoder_x, osd_decoder_z, calc_performance_per_iter)
+    simulation_batch_time, p_physical, quantum_tanner_code, decoder_property, max_num_deg_errors, max_num_simulations, osd_decoder_x, osd_decoder_z, calc_performance_per_iter, max_iter_for_result_list)
 % Runs repeated decoding trials for a fixed duration (used in parallel mode).
 % Calls run_decoding in a loop until simulation_batch_time seconds have elapsed
 % or the per-worker termination criteria (max_num_deg_errors, max_num_simulations)
@@ -308,10 +343,10 @@ function [num_decoded, num_error_sum, num_degenereated_error_sum, num_error_per_
     num_decoded = 0;
     num_error_sum = 0;
     num_degenereated_error_sum = 0;
-    num_error_per_iteration_sum = zeros(decoder_property.max_iter, 1);
-    num_error_deg_per_iteration_sum = zeros(decoder_property.max_iter, 1);
+    num_error_per_iteration_sum = zeros(max_iter_for_result_list, 1);
+    num_error_deg_per_iteration_sum = zeros(max_iter_for_result_list, 1);
     num_guesses_total_sum = 0;
-    num_guesses_per_iteration_sum = zeros(decoder_property.max_iter, 1);
+    num_guesses_per_iteration_sum = zeros(max_iter_for_result_list, 1);
 
     tStart = tic;
 
@@ -322,10 +357,13 @@ function [num_decoded, num_error_sum, num_degenereated_error_sum, num_error_per_
         num_decoded = num_decoded + 1;
         num_error_sum = num_error_sum + num_error;
         num_degenereated_error_sum = num_degenereated_error_sum + num_degenereated_error;
-        num_error_per_iteration_sum = num_error_per_iteration_sum + num_error_per_iteration;
-        num_error_deg_per_iteration_sum = num_error_deg_per_iteration_sum + num_error_deg_per_iteration;
         num_guesses_total_sum = num_guesses_total_sum + num_guesses_total;
-        num_guesses_per_iteration_sum = num_guesses_per_iteration_sum + num_guesses_iteration_list;
+
+        if calc_performance_per_iter
+            num_error_per_iteration_sum = num_error_per_iteration_sum + num_error_per_iteration;
+            num_error_deg_per_iteration_sum = num_error_deg_per_iteration_sum + num_error_deg_per_iteration;
+            num_guesses_per_iteration_sum = num_guesses_per_iteration_sum + num_guesses_iteration_list;
+        end
     end
 end
 
@@ -349,9 +387,15 @@ function [num_decoded, num_error, num_degenereated_error, num_error_per_iteratio
     syndrome_x = syndrome((size(quantum_tanner_code.H_global_z, 1) + 1):end);
     
     if decoder_property.use_x_z_correlation
+        assert(~decoder_property.use_relay_bp);
         [error_hat_x, error_hat_z, num_error_per_iteration, num_error_deg_per_iteration, ...
             l_app_x, l_app_z, num_guesses_total, num_guesses_iteration_list] = decode_quantum_tanner_corr( ...
             p_physical, quantum_tanner_code, decoder_property, syndrome_x, syndrome_z, correct_error, osd_decoder_x, osd_decoder_z, calc_performance_per_iter);
+    elseif decoder_property.use_relay_bp
+        assert(~decoder_property.use_x_z_correlation && ~decoder_property.use_osd_decoder);
+        [error_hat_x, error_hat_z, num_error_per_iteration, num_error_deg_per_iteration, ...
+            l_app_x, l_app_z, num_guesses_total, num_guesses_iteration_list] = decode_quantum_tanner_relay_x_z( ...
+            p_physical, quantum_tanner_code, decoder_property, syndrome_x, syndrome_z, correct_error_x, correct_error_z, calc_performance_per_iter);
     else
         [error_hat_x, error_hat_z, num_error_per_iteration, num_error_deg_per_iteration, ...
             l_app_x, l_app_z, num_guesses_total, num_guesses_iteration_list] = decode_quantum_tanner( ...

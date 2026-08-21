@@ -1,4 +1,4 @@
-function set_publication_style()
+function set_plot_style()
     % --- Global Publication Defaults ---
     set(groot, 'DefaultLineLineWidth', 1.2);      % Thicker lines
     set(groot, 'DefaultLineMarkerSize', 6);       % Visible markers

@@ -25,7 +25,7 @@ import functools
 
 def simulate_max_iter(current_max_iter, p_list, Hx_global, Hz_global, H_global, 
                       H_dual_symplectic, num_qubits, use_osd, osd_order, 
-                      max_simulations, max_errors):
+                      max_simulations, max_errors, bp_method='minimum_sum'):
     rng = np.random.default_rng()
 
     print(f"Starting worker for max_iter: {current_max_iter}", flush=True)
@@ -34,7 +34,7 @@ def simulate_max_iter(current_max_iter, p_list, Hx_global, Hz_global, H_global,
 
     for p_idx, p in enumerate(p_list):
         p = float(p)
-        decoder_z, decoder_x = helper.create_decoders(Hx_global, Hz_global, p, use_osd, current_max_iter, osd_order)
+        decoder_z, decoder_x = helper.create_decoders(Hx_global, Hz_global, p, use_osd, current_max_iter, osd_order, bp_method)
 
         num_error_degenerated = 0
         num_error = 0
@@ -74,7 +74,10 @@ if __name__ == "__main__":
     # Maximal number of block errors before simulation terminates.
     max_errors = 10
     # Maximal number of decoding iterations
-    max_iter = 100
+    max_iter = 200
+
+    # minimum_sum or product_sum (see ldpc package for details).
+    bp_method = 'minimum_sum'
 
     # If true, OSD with combination strategy using the LDPCv2 package is used 
     # as a post-processing step.
@@ -124,7 +127,8 @@ if __name__ == "__main__":
             use_osd=use_osd,
             osd_order=osd_order,
             max_simulations=max_simulations,
-            max_errors=max_errors
+            max_errors=max_errors,
+            bp_method=bp_method,
         )
 
         # Map the p_list to the workers
@@ -152,5 +156,6 @@ if __name__ == "__main__":
         "p_start": p_start,
         "p_end": p_end,
         "p_count": p_count,
+        "bp_method": bp_method,
     }
     scipy.io.savemat(file_name, save_dict)

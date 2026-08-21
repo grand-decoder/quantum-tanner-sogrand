@@ -3,3 +3,4 @@ scipy
 # The current pip version of the ldpc does not provide a standalone OSD decoder yet which this project requires.
 # Therefore, we install the "standalone_osd" branch of the ldpc repo, which provides a standalone OSD decoder.
 ldpc @ git+https://github.com/quantumgizmos/ldpc.git@baec4c8bfa2a679b0ba0e72df5582e277cd6918
+relay-bp
